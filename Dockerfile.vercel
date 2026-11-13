@@ -1,0 +1,10 @@
+FROM dunglas/frankenphp:1-php8.3-bookworm
+
+RUN install-php-extensions pdo_mysql mbstring \
+    && mv "$PHP_INI_DIR/php.ini-production" "$PHP_INI_DIR/php.ini"
+
+WORKDIR /app
+COPY app/ /app/
+COPY deploy/Caddyfile /etc/frankenphp/Caddyfile
+
+EXPOSE 80
