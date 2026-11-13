@@ -18,10 +18,11 @@ A PHP/MySQL academic prototype for submitting, reviewing and tracking student co
 ## Stack
 
 - PHP 8.3 (FrankenPHP runtime for Vercel)
-- MySQL 8+ or compatible MariaDB
+- MySQL 8+ or compatible MySQL-protocol service
 - PDO MySQL and mbstring PHP extensions
 - HTML, CSS and JavaScript
 - XAMPP for local development
+- Vercel Container runtime for hosted demonstration
 
 ## Repository layout
 
@@ -47,36 +48,46 @@ Local PHP sessions use PHP's file session handler. The production database sessi
 
 ## Vercel deployment
 
-The project uses Vercel's Container runtime with FrankenPHP. Vercel container instances are stateless, so the application uses a MySQL-backed PHP session table when deployed there. A durable remote MySQL/MariaDB database is required; a database running on a developer's laptop or inside the container is not suitable.
+The project uses Vercel's Container runtime with FrankenPHP. Vercel container instances are stateless, so the application uses a MySQL-backed PHP session table when deployed there. A durable remote MySQL-compatible database is required; a database running on a developer's laptop or inside the container is not suitable.
 
-### Required production environment variables
+### Suggested no-cost database for a small demonstration
 
-Set these in Vercel Project Settings → Environment Variables (Production and Preview as needed):
+TiDB Cloud Starter offers a MySQL-compatible endpoint with a free monthly allowance. The documented allowance is 5 GiB of row storage, 5 GiB of columnar storage and 50 million request units per instance, with up to five eligible instances per organisation. The instance can be set with a zero spending limit to remain within the free quota; after the quota is reached, new connections can be blocked until the quota resets or the limit is changed. Check the provider's current terms before creating it.
 
-| Variable | Purpose |
+### Create the hosted database
+
+1. Create a TiDB Cloud account and create a **MySQL-compatible Starter** instance. Choose a region close to the Vercel deployment.
+2. In the instance's **Connect** dialog, select the public connection method and note the host, port, username prefix and password. TiDB Cloud Starter's public connection requires TLS. The normal MySQL port for TiDB Cloud Starter is `4000`.
+3. Open the TiDB SQL editor or connect with a MySQL-compatible client. Use the instance's prefixed administrator username to create the application database:
+   ```sql
+   CREATE DATABASE uidlc_feedback CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+   ```
+4. Select `uidlc_feedback` and execute the contents of `app/database.sql`. This creates `users`, `complaints`, `status_history` and `uidlc_sessions`.
+5. Create a dedicated application database user and grant it only the permissions required to operate the application. Use TiDB's required instance username prefix. Do not use the root account for the deployed application.
+6. Keep the database host, port, database name, prefixed application username and generated password for the Vercel environment-variable step.
+
+### Required Vercel environment variables
+
+Set these in Vercel Project Settings → Environment Variables for Production (and Preview if you will test previews):
+
+| Variable | Value |
 |---|---|
-| `UIDLC_DB_HOST` | Managed MySQL host |
-| `UIDLC_DB_PORT` | Database port, normally `3306` |
-| `UIDLC_DB_NAME` | Database/schema name |
-| `UIDLC_DB_USER` | Dedicated database user (not `root`) |
-| `UIDLC_DB_PASSWORD` | Database password (mark sensitive/encrypted) |
+| `UIDLC_DB_HOST` | TiDB Cloud host from the Connect dialog |
+| `UIDLC_DB_PORT` | `4000` for TiDB Cloud Starter |
+| `UIDLC_DB_NAME` | `uidlc_feedback` |
+| `UIDLC_DB_USER` | Prefixed least-privilege application username |
+| `UIDLC_DB_PASSWORD` | Application database password (mark sensitive/encrypted) |
 | `UIDLC_DB_CHARSET` | `utf8mb4` |
-| `UIDLC_SESSION_DRIVER` | Must be `database` |
+| `UIDLC_SESSION_DRIVER` | `database` |
 | `UIDLC_SESSION_LIFETIME` | Optional session lifetime in seconds; default `1440` |
 
-Alternatively, `UIDLC_DB_DSN` may provide a complete PDO MySQL DSN; the username and password are still supplied separately. Never commit credentials to GitHub or paste them into chat.
+The hosted PHP configuration enables TLS certificate verification using the container's system CA bundle. If a database provider requires a separate CA bundle, set `UIDLC_DB_SSL_CA` to the CA certificate path. `UIDLC_DB_DSN` can optionally provide a complete PDO MySQL DSN; username and password are still configured separately.
 
-### Database initialization
-
-1. Provision a managed MySQL/MariaDB database in a region reasonably close to the Vercel deployment.
-2. Create a dedicated database/schema and a least-privilege application user.
-3. Allow network access from the Vercel deployment according to the provider's current connection guidance. If the database requires IP allowlisting, account for Vercel's variable outbound IPs; do not assume a fixed IP.
-4. Import `app/database.sql` into the newly created empty database. This creates `users`, `complaints`, `status_history` and `uidlc_sessions` tables.
-5. Add the environment variables above to Vercel. Do not put the production database dump or real student records in this repository.
+Never commit database credentials to GitHub or paste them into chat.
 
 ### Administrator account
 
-The application has no public administrator registration page and no web-accessible administrator-creation helper. Create the first administrator locally through a controlled database procedure after generating a password hash with PHP's `password_hash()`. Do not commit the password, password hash, or database records to GitHub. Use a new production-only password; never reuse the local demonstration password.
+The application has no public administrator registration page and no web-accessible administrator-creation helper. Create the first administrator with a controlled SQL procedure using a password hash generated with PHP's `password_hash()`. Do not commit the password, password hash, or database records to GitHub. Use a new production-only password; never reuse the local demonstration password.
 
 ## Security and deployment limitations
 
@@ -84,7 +95,7 @@ This repository is an academic source-code release, not a production security ce
 
 - Use HTTPS and secure cookie settings (the hosted configuration marks cookies secure).
 - Use a dedicated least-privilege database account and a strong secret password.
-- Enable provider-side encrypted connections where supported and configure TLS verification for the database.
+- Require verified TLS for the database connection.
 - Add login throttling/rate limiting, monitoring, backups and tested recovery.
 - Conduct independent security tests, including cross-account isolation, CSRF rejection, invalid input, session fixation and administrator access control.
 - Define retention, deletion, access logging, privacy notices and incident response.
