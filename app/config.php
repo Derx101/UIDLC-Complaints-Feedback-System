@@ -54,13 +54,22 @@ try {
 }
 
 /**
- * Persistent MySQL-backed sessions for stateless container hosting.
- * Local XAMPP continues to use PHP's standard file-based session handler.
+ * Persistent database-backed sessions for stateless container hosting.
+ *
+ * The handler implements SessionUpdateTimestampHandlerInterface so PHP can
+ * validate incoming session IDs when strict mode is enabled. It also refreshes
+ * last_activity when session data has not changed. Local XAMPP continues to use
+ * PHP's standard file-based session handler.
+ *
+ * Session writes use atomic INSERT ... ON DUPLICATE KEY UPDATE statements.
+ * No connection-scoped advisory lock is used, avoiding reliance on GET_LOCK()
+ * support or connection affinity in managed MySQL-compatible services.
  */
-final class PdoSessionHandler implements SessionHandlerInterface
+final class PdoSessionHandler implements
+    SessionHandlerInterface,
+    SessionUpdateTimestampHandlerInterface,
+    SessionIdInterface
 {
-    private ?string $activeLock = null;
-
     public function __construct(
         private PDO $pdo,
         private int $lifetime = 1440
@@ -74,83 +83,96 @@ final class PdoSessionHandler implements SessionHandlerInterface
 
     public function close(): bool
     {
-        $this->releaseLock();
         return true;
     }
 
-    private function acquireLock(string $id): bool
+    public function create_sid(): string
     {
-        $lockName = 'uidlc_session_' . substr(hash('sha256', $id), 0, 48);
-        if ($this->activeLock === $lockName) {
-            return true;
-        }
-        $this->releaseLock();
+        return bin2hex(random_bytes(32));
+    }
 
-        $statement = $this->pdo->prepare('SELECT GET_LOCK(?, 10)');
-        $statement->execute([$lockName]);
-        if ((int) $statement->fetchColumn() !== 1) {
+    public function validateId(string $id): bool
+    {
+        try {
+            $statement = $this->pdo->prepare(
+                'SELECT 1 FROM uidlc_sessions
+                 WHERE session_id = ? AND last_activity >= ?
+                 LIMIT 1'
+            );
+            $statement->execute([$id, time() - $this->lifetime]);
+            return $statement->fetchColumn() !== false;
+        } catch (Throwable $exception) {
+            error_log('UIDLC session ID validation error: ' . $exception->getMessage());
             return false;
-        }
-        $this->activeLock = $lockName;
-        return true;
-    }
-
-    private function releaseLock(): void
-    {
-        if ($this->activeLock !== null) {
-            $statement = $this->pdo->prepare('SELECT RELEASE_LOCK(?)');
-            $statement->execute([$this->activeLock]);
-            $this->activeLock = null;
         }
     }
 
     public function read(string $id): string|false
     {
-        if (!$this->acquireLock($id)) {
+        try {
+            $statement = $this->pdo->prepare(
+                'SELECT session_data FROM uidlc_sessions
+                 WHERE session_id = ? AND last_activity >= ?
+                 LIMIT 1'
+            );
+            $statement->execute([$id, time() - $this->lifetime]);
+            $data = $statement->fetchColumn();
+            return $data === false ? '' : (string) $data;
+        } catch (Throwable $exception) {
+            error_log('UIDLC session read error: ' . $exception->getMessage());
             return false;
         }
-
-        $statement = $this->pdo->prepare(
-            'SELECT session_data FROM uidlc_sessions WHERE session_id = ? AND last_activity >= ?'
-        );
-        $statement->execute([$id, time() - $this->lifetime]);
-        $data = $statement->fetchColumn();
-        return $data === false ? '' : (string) $data;
     }
 
     public function write(string $id, string $data): bool
     {
-        if (!$this->acquireLock($id)) {
+        try {
+            $statement = $this->pdo->prepare(
+                'INSERT INTO uidlc_sessions (session_id, session_data, last_activity)
+                 VALUES (?, ?, ?)
+                 ON DUPLICATE KEY UPDATE
+                     session_data = VALUES(session_data),
+                     last_activity = VALUES(last_activity)'
+            );
+            return $statement->execute([$id, $data, time()]);
+        } catch (Throwable $exception) {
+            error_log('UIDLC session write error: ' . $exception->getMessage());
             return false;
         }
+    }
 
-        $statement = $this->pdo->prepare(
-            'INSERT INTO uidlc_sessions (session_id, session_data, last_activity)
-             VALUES (?, ?, ?)
-             ON DUPLICATE KEY UPDATE
-                 session_data = VALUES(session_data),
-                 last_activity = VALUES(last_activity)'
-        );
-        return $statement->execute([$id, $data, time()]);
+    public function updateTimestamp(string $id, string $data): bool
+    {
+        // Reuse the atomic upsert so the row is also repaired if it disappeared
+        // between PHP's validateId() and timestamp-update callbacks.
+        return $this->write($id, $data);
     }
 
     public function destroy(string $id): bool
     {
-        $statement = $this->pdo->prepare('DELETE FROM uidlc_sessions WHERE session_id = ?');
-        $result = $statement->execute([$id]);
-
-        $expectedLock = 'uidlc_session_' . substr(hash('sha256', $id), 0, 48);
-        if ($this->activeLock === $expectedLock) {
-            $this->releaseLock();
+        try {
+            $statement = $this->pdo->prepare(
+                'DELETE FROM uidlc_sessions WHERE session_id = ?'
+            );
+            return $statement->execute([$id]);
+        } catch (Throwable $exception) {
+            error_log('UIDLC session destroy error: ' . $exception->getMessage());
+            return false;
         }
-        return $result;
     }
 
     public function gc(int $max_lifetime): int|false
     {
-        $statement = $this->pdo->prepare('DELETE FROM uidlc_sessions WHERE last_activity < ?');
-        $statement->execute([time() - $max_lifetime]);
-        return $statement->rowCount();
+        try {
+            $statement = $this->pdo->prepare(
+                'DELETE FROM uidlc_sessions WHERE last_activity < ?'
+            );
+            $statement->execute([time() - $max_lifetime]);
+            return $statement->rowCount();
+        } catch (Throwable $exception) {
+            error_log('UIDLC session cleanup error: ' . $exception->getMessage());
+            return false;
+        }
     }
 }
 
