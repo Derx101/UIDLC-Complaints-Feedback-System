@@ -19,8 +19,8 @@ A PHP/MySQL web application prototype for submitting, reviewing and tracking stu
 
 - PHP 8+
 - MySQL 8+ or a compatible MariaDB release
+- PHP extensions: PDO, pdo_mysql and mbstring
 - HTML5, CSS and JavaScript
-- PDO for database access
 - XAMPP for local development
 
 ## Repository structure
@@ -45,26 +45,47 @@ A PHP/MySQL web application prototype for submitting, reviewing and tracking stu
 ## Local installation with XAMPP
 
 1. Install XAMPP with Apache, PHP and MySQL/MariaDB.
-2. Download this repository or clone it:
+2. Clone this repository:
    ```bash
    git clone https://github.com/Derx101/UIDLC-Complaints-Feedback-System.git
    ```
 3. Copy the contents of the repository's `app/` directory into a folder named `uidlc-feedback` inside XAMPP's `htdocs` directory. For a typical Windows installation, this is:
    ```text
-   C:\xampp\htdocs\uidlc-feedback
+   C:\\xampp\\htdocs\\uidlc-feedback
    ```
 4. Start Apache and MySQL from the XAMPP Control Panel.
-5. For a **new, empty test database only**, open phpMyAdmin, select the Import tab and import `database.sql`. Do not import it over a database that already contains records.
-6. Review the database connection values near the top of `app/config.php`. The default values are intended only for a local XAMPP development environment. Use a dedicated database account for any shared or hosted environment.
+5. For a **new, empty test database only**, open phpMyAdmin, select the Import tab and import `app/database.sql`. Do not import it over a database that already contains records.
+6. Review the database connection settings near the top of `app/config.php`. Environment variables can override the local defaults:
+   - `UIDLC_DB_HOST`
+   - `UIDLC_DB_NAME`
+   - `UIDLC_DB_USER`
+   - `UIDLC_DB_PASSWORD`
+   - `UIDLC_DB_CHARSET`
+
+   The fallback `root` user with a blank password is intended only for a typical isolated local XAMPP setup. Use a dedicated least-privilege database account with a strong password in any shared or hosted environment.
 7. Visit:
    ```text
    http://localhost/uidlc-feedback/
    ```
 8. Register a synthetic student account and test the student workflow.
 
-### Administrator account
+### Creating an administrator account locally
 
-The application does not include a public administrator-registration page or a web-accessible account-creation helper. Create an administrator account only through a controlled, local administrative procedure. Do not publish administrator passwords, password hashes from real accounts or test credentials in this repository.
+There is no public administrator-registration page and no web-accessible account-creation helper in this repository. To create an administrator for a local academic demonstration:
+
+1. Open XAMPP Shell and run the following command, replacing the example password with a strong password of your own. Do not share the password or its hash:
+   ```bash
+   php -r "echo password_hash('REPLACE-WITH-YOUR-OWN-PASSWORD', PASSWORD_DEFAULT), PHP_EOL;"
+   ```
+2. Copy the resulting hash.
+3. In phpMyAdmin, select the `uidlc_feedback` database, open the SQL tab and run the following statement after replacing the name, email and hash placeholders:
+   ```sql
+   INSERT INTO users (full_name, email, password_hash, role)
+   VALUES ('System Administrator', 'admin@example.test', 'PASTE-GENERATED-HASH-HERE', 'admin');
+   ```
+4. Sign in through the normal login page using the administrator email and password.
+
+Use a test-only email address for academic demonstration. Never commit administrator credentials, password hashes from real accounts or database records to this repository.
 
 ## Database
 
@@ -82,7 +103,7 @@ This repository is published for academic demonstration and source review. The l
 
 - Use HTTPS and secure cookie settings.
 - Configure a dedicated least-privilege database account and keep credentials outside source control.
-- Set strong environment-specific configuration and secret management.
+- Use strong environment-specific configuration and secret management.
 - Add login rate limiting, monitoring, database backups and tested recovery procedures.
 - Define data retention, deletion, access logging and incident-response procedures.
 - Conduct independent security testing, including authorisation and cross-account data-isolation tests.
