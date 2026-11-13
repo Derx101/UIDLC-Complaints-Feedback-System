@@ -25,18 +25,28 @@ if ($runningOnVercel && ($dbUser === 'root' || $dbPassword === '')) {
     exit('The application database is not configured. Contact the site administrator.');
 }
 
+$pdoOptions = [
+    PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
+    PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
+    PDO::ATTR_EMULATE_PREPARES => false,
+    PDO::ATTR_PERSISTENT => false,
+    PDO::ATTR_TIMEOUT => 10,
+];
+
+// TiDB Cloud and other public managed MySQL endpoints require verified TLS in production.
+if ($runningOnVercel) {
+    $caPath = getenv('UIDLC_DB_SSL_CA') ?: '/etc/ssl/certs/ca-certificates.crt';
+    if (!is_file($caPath)) {
+        error_log('UIDLC database CA bundle was not found.');
+        http_response_code(500);
+        exit('The database TLS certificate bundle is not configured.');
+    }
+    $pdoOptions[PDO::MYSQL_ATTR_SSL_CA] = $caPath;
+    $pdoOptions[PDO::MYSQL_ATTR_SSL_VERIFY_SERVER_CERT] = true;
+}
+
 try {
-    $pdo = new PDO(
-        $dbDsn,
-        $dbUser,
-        $dbPassword,
-        [
-            PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
-            PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
-            PDO::ATTR_EMULATE_PREPARES => false,
-            PDO::ATTR_PERSISTENT => false,
-        ]
-    );
+    $pdo = new PDO($dbDsn, $dbUser, $dbPassword, $pdoOptions);
 } catch (PDOException $exception) {
     error_log('UIDLC database connection error: ' . $exception->getMessage());
     http_response_code(500);
