@@ -1,0 +1,300 @@
+@import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Manrope:wght@500;600;700;800&display=swap');
+
+:root {
+    --ink: #182b3b;
+    --muted: #657786;
+    --blue: #145d78;
+    --mint: #dff3ed;
+    --paper: #f4f7f8;
+    --line: #dce5e8;
+}
+
+* {
+    box-sizing: border-box;
+}
+
+body {
+    margin: 0;
+    background: var(--paper);
+    color: var(--ink);
+    font-family: 'DM Sans', Arial, sans-serif;
+    line-height: 1.55;
+}
+
+a {
+    color: var(--blue);
+    text-decoration: none;
+}
+
+.hero {
+    max-width: 1100px;
+    margin: auto;
+    padding: 24px;
+}
+
+.hero nav,
+.top {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 16px 0;
+}
+
+.hero nav span,
+.top span {
+    display: block;
+    color: var(--muted);
+    font-size: 13px;
+}
+
+.hero-card {
+    margin: 8vh auto;
+    background: #fff;
+    border: 1px solid var(--line);
+    border-radius: 28px;
+    padding: clamp(28px, 6vw, 72px);
+    max-width: 850px;
+    box-shadow: 0 18px 55px #17364a12;
+}
+
+h1,
+h2 {
+    font-family: Manrope, Arial, sans-serif;
+    line-height: 1.15;
+}
+
+h1 {
+    font-size: clamp(2rem, 5vw, 3.6rem);
+    margin: 12px 0;
+}
+
+h2 {
+    font-size: 1.45rem;
+}
+
+.hero-card > p:not(.eyebrow) {
+    max-width: 620px;
+    color: var(--muted);
+    font-size: 1.1rem;
+}
+
+.eyebrow {
+    font-size: 12px;
+    letter-spacing: .14em;
+    font-weight: 700;
+    color: var(--blue);
+}
+
+.actions {
+    display: flex;
+    gap: 12px;
+    flex-wrap: wrap;
+    margin: 28px 0;
+}
+
+.button,
+button {
+    display: inline-block;
+    background: var(--blue);
+    color: #fff;
+    border: 0;
+    border-radius: 10px;
+    padding: 12px 18px;
+    font-weight: 700;
+    cursor: pointer;
+}
+
+.secondary {
+    background: var(--mint);
+    color: var(--ink);
+}
+
+small {
+    color: var(--muted);
+}
+
+.shell {
+    max-width: 1050px;
+    margin: 30px auto;
+    padding: 0 20px;
+}
+
+.panel {
+    background: #fff;
+    border: 1px solid var(--line);
+    border-radius: 18px;
+    padding: 26px;
+    margin: 18px 0;
+    box-shadow: 0 8px 28px #17364a0b;
+}
+
+.narrow {
+    max-width: 500px;
+    margin: 8vh auto;
+}
+
+label {
+    display: block;
+    font-weight: 600;
+    margin: 16px 0;
+}
+
+input,
+select,
+textarea {
+    display: block;
+    width: 100%;
+    padding: 12px;
+    border: 1px solid #cbd7dc;
+    border-radius: 9px;
+    margin-top: 6px;
+    font: inherit;
+    background: white;
+    color: var(--ink);
+}
+
+textarea {
+    resize: vertical;
+}
+
+form button {
+    margin-top: 8px;
+}
+
+.error {
+    color: #9b1c31;
+    background: #fff0f1;
+    padding: 10px;
+    border-radius: 8px;
+}
+
+.success {
+    color: #126348;
+    background: #e8f7ef;
+    padding: 10px;
+    border-radius: 8px;
+}
+
+.table-wrap {
+    overflow-x: auto;
+}
+
+table {
+    border-collapse: collapse;
+    width: 100%;
+    font-size: 14px;
+}
+
+th,
+td {
+    text-align: left;
+    padding: 12px;
+    border-bottom: 1px solid var(--line);
+    vertical-align: top;
+}
+
+th {
+    background: #f5f9fa;
+}
+
+.badge {
+    display: inline-block;
+    background: var(--mint);
+    padding: 4px 9px;
+    border-radius: 30px;
+    font-size: 12px;
+    font-weight: 700;
+    white-space: nowrap;
+}
+
+.ticket {
+    border: 1px solid var(--line);
+    border-radius: 14px;
+    padding: 18px;
+    margin: 18px 0;
+}
+
+.ticket-head {
+    display: flex;
+    justify-content: space-between;
+    gap: 12px;
+    align-items: center;
+}
+
+.ticket p {
+    color: var(--muted);
+}
+
+.admin-form {
+    background: #f7fafb;
+    padding: 14px;
+    border-radius: 10px;
+}
+
+.top {
+    padding: 0 0 16px;
+}
+
+.top strong {
+    font-family: Manrope;
+    font-size: 20px;
+}
+
+@media (max-width: 650px) {
+    .shell {
+        margin: 10px auto;
+    }
+
+    .panel {
+        padding: 18px;
+    }
+
+    .ticket-head {
+        align-items: flex-start;
+        flex-direction: column;
+    }
+}
+
+/* Status history and supporting interface elements */
+.muted {
+    color: var(--muted);
+    font-size: 13px;
+}
+
+.history {
+    margin-top: 16px;
+    padding: 12px 14px;
+    background: #f7fafb;
+    border-radius: 10px;
+}
+
+.history summary {
+    color: var(--blue);
+    font-weight: 700;
+    cursor: pointer;
+}
+
+.timeline {
+    margin: 14px 0 4px;
+    padding-left: 22px;
+}
+
+.timeline li {
+    margin: 12px 0;
+    padding-left: 4px;
+}
+
+.timeline li > span {
+    display: block;
+    color: var(--muted);
+    font-size: 13px;
+}
+
+.timeline li p {
+    margin: 5px 0;
+    color: var(--ink);
+}
+
+.history-row td {
+    background: #fbfdfd;
+}

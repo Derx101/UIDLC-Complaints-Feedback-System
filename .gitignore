@@ -1,0 +1,19 @@
+# Local configuration and secrets
+.env
+.env.*
+!.env.example
+app/config.local.php
+
+# Runtime files
+*.log
+*.tmp
+*.swp
+*.swo
+.DS_Store
+Thumbs.db
+
+# Dependencies and generated files
+/vendor/
+/node_modules/
+/storage/
+/cache/
